@@ -5,10 +5,12 @@ import re
 import urllib2
 import bs4
 import PyRSS2Gen
+import pytz
 
 
 class MontesClarosComRSS:
     def __init__(self):
+        self.brtz = pytz.timezone('America/Sao_Paulo')
         self.date_pattern_hour_only = re.compile('.* (\d+\/\d+\/\d+ - \d+h)')
         self.date_pattern_hour_with_minute = re.compile('.* (\d+\/\d+\/\d+ - \d+h\d+)')
         self.feed = None
@@ -30,7 +32,9 @@ class MontesClarosComRSS:
             if not matched_date:
                 date_format = '%d/%m/%y - %Hh'
                 matched_date = re.match(self.date_pattern_hour_only, span_date.text)
-            item_date = datetime.strptime(matched_date.group(1), date_format)
+            naive_date = datetime.strptime(matched_date.group(1), date_format)
+            aware_date = self.brtz.localize(naive_date)
+            item_date = aware_date.astimezone(pytz.utc)
             item_title = span_title.text.strip()
             item_link = u'http://montesclaros.com' + span_title.a['href']
             item_content = span_content.text.strip()
@@ -41,11 +45,14 @@ class MontesClarosComRSS:
                 pubDate = item_date
             )
             rss_items.append(new_item)
+        naive_date = datetime.now()
+        aware_date = self.brtz.localize(naive_date)
+        build_date = aware_date.astimezone(pytz.utc)
         self.feed = PyRSS2Gen.RSS2(
             title = u'montesclaros.com',
             link = 'http://montesclaros.com/',
             description = u'Um olhar de Montes Claros sobre o que é notícia em toda parte',
-            lastBuildDate = datetime.now(),
+            lastBuildDate = build_date,
             items = rss_items,
         )
 
