@@ -10,14 +10,10 @@ import pytz
 
 class MontesClarosComRSS:
     def __init__(self):
-        self.brtz = pytz.timezone('America/Sao_Paulo')
         self.date_pattern_hour_only = re.compile('.* (\d+\/\d+\/\d+ - \d+h)')
         self.date_pattern_hour_with_minute = re.compile('.* (\d+\/\d+\/\d+ - \d+h\d+)')
         self.feed = None
         self.soup = None
-
-    def load_content(self):
-        return bs4.BeautifulSoup(urllib2.urlopen('http://montesclaros.com/').read())
 
     def generate_feed(self):
         if not self.soup:
@@ -32,9 +28,8 @@ class MontesClarosComRSS:
             if not matched_date:
                 date_format = '%d/%m/%y - %Hh'
                 matched_date = re.match(self.date_pattern_hour_only, span_date.text)
-            naive_date = datetime.strptime(matched_date.group(1), date_format)
-            aware_date = self.brtz.localize(naive_date)
-            item_date = aware_date.astimezone(pytz.utc)
+            converted_date = datetime.strptime(matched_date.group(1), date_format)
+            item_date = self.naive_to_utc(converted_date)
             item_title = span_title.text.strip()
             item_link = u'http://montesclaros.com' + span_title.a['href']
             item_content = span_content.text.strip()
@@ -45,9 +40,7 @@ class MontesClarosComRSS:
                 pubDate = item_date
             )
             rss_items.append(new_item)
-        naive_date = datetime.now()
-        aware_date = self.brtz.localize(naive_date)
-        build_date = aware_date.astimezone(pytz.utc)
+        build_date = self.naive_to_utc(datetime.now())
         self.feed = PyRSS2Gen.RSS2(
             title = u'montesclaros.com',
             link = 'http://montesclaros.com/',
@@ -55,6 +48,15 @@ class MontesClarosComRSS:
             lastBuildDate = build_date,
             items = rss_items,
         )
+
+    def load_content(self):
+        return bs4.BeautifulSoup(urllib2.urlopen('http://montesclaros.com/').read())
+
+    def naive_to_utc(self, naive_date):
+        brtz = pytz.timezone('America/Sao_Paulo')
+        aware_date_local = brtz.localize(naive_date)
+        aware_date_utc = aware_date_local.astimezone(pytz.utc)
+        return aware_date_utc
 
     def save_feed(self):
         if not self.feed:
