@@ -10,7 +10,7 @@ import PyRSS2Gen
 class MontesClarosComRSS:
     def __init__(self):
         self.date_pattern_hour_only = re.compile('.* (\d+\/\d+\/\d+ - \d+h)')
-        self.date_pattern_with_minute = re.compile('.* (\d+\/\d+\/\d+ - \d+h\d+)')
+        self.date_pattern_hour_with_minute = re.compile('.* (\d+\/\d+\/\d+ - \d+h\d+)')
         self.feed = None
         self.soup = None
 
@@ -24,15 +24,16 @@ class MontesClarosComRSS:
             self.total = len(self.titles)
         rss_items = []
         for i in xrange(0, self.total, 3):
+            span_date, span_title, span_content = self.titles[i:i+3]
             date_format = '%d/%m/%y - %Hh%M'
-            span_date = re.match(self.date_pattern_with_minute, self.titles[i].text)
-            if not span_date:
+            matched_date = re.match(self.date_pattern_hour_with_minute, span_date.text)
+            if not matched_date:
                 date_format = '%d/%m/%y - %Hh'
-                span_date = re.match(self.date_pattern_hour_only, self.titles[i].text)
-            item_date = datetime.strptime(span_date.group(1), date_format)
-            item_title = self.titles[i+1].text.strip()
-            item_link = u'http://montesclaros.com' + self.titles[i+1].a['href']
-            item_content = self.titles[i+2].text.strip()
+                matched_date = re.match(self.date_pattern_hour_only, span_date.text)
+            item_date = datetime.strptime(matched_date.group(1), date_format)
+            item_title = span_title.text.strip()
+            item_link = u'http://montesclaros.com' + span_title.a['href']
+            item_content = span_content.text.strip()
             new_item = PyRSS2Gen.RSSItem(
                 title = item_title,
                 link = item_link,
